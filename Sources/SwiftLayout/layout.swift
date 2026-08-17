@@ -508,6 +508,91 @@ private struct FfiConverterString: FfiConverter {
     }
 }
 
+public struct FfiArrowhead {
+    public var tip: FfiPoint
+    /**
+     * Tangent angle in radians (pointing in the direction of the edge flow).
+     */
+    public var angle: Float
+    public var left: FfiPoint
+    public var right: FfiPoint
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(tip: FfiPoint,
+                /* 
+                    * Tangent angle in radians (pointing in the direction of the edge flow).
+                    */ angle: Float, left: FfiPoint, right: FfiPoint)
+    {
+        self.tip = tip
+        self.angle = angle
+        self.left = left
+        self.right = right
+    }
+}
+
+extension FfiArrowhead: Sendable {}
+extension FfiArrowhead: Equatable, Hashable {
+    public static func == (lhs: FfiArrowhead, rhs: FfiArrowhead) -> Bool {
+        if lhs.tip != rhs.tip {
+            return false
+        }
+        if lhs.angle != rhs.angle {
+            return false
+        }
+        if lhs.left != rhs.left {
+            return false
+        }
+        if lhs.right != rhs.right {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(tip)
+        hasher.combine(angle)
+        hasher.combine(left)
+        hasher.combine(right)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiArrowhead: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiArrowhead {
+        return
+            try FfiArrowhead(
+                tip: FfiConverterTypeFfiPoint.read(from: &buf),
+                angle: FfiConverterFloat.read(from: &buf),
+                left: FfiConverterTypeFfiPoint.read(from: &buf),
+                right: FfiConverterTypeFfiPoint.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiArrowhead, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiPoint.write(value.tip, into: &buf)
+        FfiConverterFloat.write(value.angle, into: &buf)
+        FfiConverterTypeFfiPoint.write(value.left, into: &buf)
+        FfiConverterTypeFfiPoint.write(value.right, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiArrowhead_lift(_ buf: RustBuffer) throws -> FfiArrowhead {
+    return try FfiConverterTypeFfiArrowhead.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiArrowhead_lower(_ value: FfiArrowhead) -> RustBuffer {
+    return FfiConverterTypeFfiArrowhead.lower(value)
+}
+
 public struct FfiConfig {
     public var hGap: Float
     public var vGap: Float
@@ -520,6 +605,7 @@ public struct FfiConfig {
     public var sweeps: UInt32
     public var algorithm: FfiAlgorithm
     public var routing: FfiRoutingStyle
+    public var direction: FfiDirection
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
@@ -528,7 +614,7 @@ public struct FfiConfig {
                     * Barycenter sweep count for crossing reduction. 4 is a reasonable
                     * default; raise it for a "final" layout, lower it while the user is
                     * interactively editing the graph.
-                    */ sweeps: UInt32, algorithm: FfiAlgorithm, routing: FfiRoutingStyle)
+                    */ sweeps: UInt32, algorithm: FfiAlgorithm, routing: FfiRoutingStyle, direction: FfiDirection)
     {
         self.hGap = hGap
         self.vGap = vGap
@@ -536,9 +622,11 @@ public struct FfiConfig {
         self.sweeps = sweeps
         self.algorithm = algorithm
         self.routing = routing
+        self.direction = direction
     }
 }
 
+extension FfiConfig: Sendable {}
 extension FfiConfig: Equatable, Hashable {
     public static func == (lhs: FfiConfig, rhs: FfiConfig) -> Bool {
         if lhs.hGap != rhs.hGap {
@@ -559,6 +647,9 @@ extension FfiConfig: Equatable, Hashable {
         if lhs.routing != rhs.routing {
             return false
         }
+        if lhs.direction != rhs.direction {
+            return false
+        }
         return true
     }
 
@@ -569,6 +660,7 @@ extension FfiConfig: Equatable, Hashable {
         hasher.combine(sweeps)
         hasher.combine(algorithm)
         hasher.combine(routing)
+        hasher.combine(direction)
     }
 }
 
@@ -584,7 +676,8 @@ public struct FfiConverterTypeFfiConfig: FfiConverterRustBuffer {
                 relaxPasses: FfiConverterUInt32.read(from: &buf),
                 sweeps: FfiConverterUInt32.read(from: &buf),
                 algorithm: FfiConverterTypeFfiAlgorithm.read(from: &buf),
-                routing: FfiConverterTypeFfiRoutingStyle.read(from: &buf)
+                routing: FfiConverterTypeFfiRoutingStyle.read(from: &buf),
+                direction: FfiConverterTypeFfiDirection.read(from: &buf)
             )
     }
 
@@ -595,6 +688,7 @@ public struct FfiConverterTypeFfiConfig: FfiConverterRustBuffer {
         FfiConverterUInt32.write(value.sweeps, into: &buf)
         FfiConverterTypeFfiAlgorithm.write(value.algorithm, into: &buf)
         FfiConverterTypeFfiRoutingStyle.write(value.routing, into: &buf)
+        FfiConverterTypeFfiDirection.write(value.direction, into: &buf)
     }
 }
 
@@ -615,15 +709,33 @@ public func FfiConverterTypeFfiConfig_lower(_ value: FfiConfig) -> RustBuffer {
 public struct FfiEdge {
     public var from: UInt64
     public var to: UInt64
+    /**
+     * Optional label width for obstacle-free label placement.
+     */
+    public var labelWidth: Float?
+    /**
+     * Optional label height for obstacle-free label placement.
+     */
+    public var labelHeight: Float?
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(from: UInt64, to: UInt64) {
+    public init(from: UInt64, to: UInt64,
+                /* 
+                    * Optional label width for obstacle-free label placement.
+                    */ labelWidth: Float?,
+                /* 
+                    * Optional label height for obstacle-free label placement.
+                    */ labelHeight: Float?)
+    {
         self.from = from
         self.to = to
+        self.labelWidth = labelWidth
+        self.labelHeight = labelHeight
     }
 }
 
+extension FfiEdge: Sendable {}
 extension FfiEdge: Equatable, Hashable {
     public static func == (lhs: FfiEdge, rhs: FfiEdge) -> Bool {
         if lhs.from != rhs.from {
@@ -632,12 +744,20 @@ extension FfiEdge: Equatable, Hashable {
         if lhs.to != rhs.to {
             return false
         }
+        if lhs.labelWidth != rhs.labelWidth {
+            return false
+        }
+        if lhs.labelHeight != rhs.labelHeight {
+            return false
+        }
         return true
     }
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(from)
         hasher.combine(to)
+        hasher.combine(labelWidth)
+        hasher.combine(labelHeight)
     }
 }
 
@@ -649,13 +769,17 @@ public struct FfiConverterTypeFfiEdge: FfiConverterRustBuffer {
         return
             try FfiEdge(
                 from: FfiConverterUInt64.read(from: &buf),
-                to: FfiConverterUInt64.read(from: &buf)
+                to: FfiConverterUInt64.read(from: &buf),
+                labelWidth: FfiConverterOptionFloat.read(from: &buf),
+                labelHeight: FfiConverterOptionFloat.read(from: &buf)
             )
     }
 
     public static func write(_ value: FfiEdge, into buf: inout [UInt8]) {
         FfiConverterUInt64.write(value.from, into: &buf)
         FfiConverterUInt64.write(value.to, into: &buf)
+        FfiConverterOptionFloat.write(value.labelWidth, into: &buf)
+        FfiConverterOptionFloat.write(value.labelHeight, into: &buf)
     }
 }
 
@@ -681,7 +805,17 @@ public struct FfiEdgeRoute {
      * arrowhead at the `from` end rather than the `to` end.
      */
     public var reversed: Bool
+    public var isSelfLoop: Bool
     public var waypoints: [FfiPoint]
+    public var segments: [FfiPathSegment]
+    /**
+     * Precomputed arrowhead geometry (tip + wing vertices) at the target end.
+     */
+    public var arrowhead: FfiArrowhead?
+    /**
+     * Obstacle-free label center position, if the edge had label dimensions.
+     */
+    public var labelPosition: FfiPoint?
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
@@ -689,15 +823,26 @@ public struct FfiEdgeRoute {
                 /* 
                     * True if this edge was reversed by cycle breaking; draw the
                     * arrowhead at the `from` end rather than the `to` end.
-                    */ reversed: Bool, waypoints: [FfiPoint])
+                    */ reversed: Bool, isSelfLoop: Bool, waypoints: [FfiPoint], segments: [FfiPathSegment],
+                /* 
+                    * Precomputed arrowhead geometry (tip + wing vertices) at the target end.
+                    */ arrowhead: FfiArrowhead?,
+                /* 
+                    * Obstacle-free label center position, if the edge had label dimensions.
+                    */ labelPosition: FfiPoint?)
     {
         self.from = from
         self.to = to
         self.reversed = reversed
+        self.isSelfLoop = isSelfLoop
         self.waypoints = waypoints
+        self.segments = segments
+        self.arrowhead = arrowhead
+        self.labelPosition = labelPosition
     }
 }
 
+extension FfiEdgeRoute: Sendable {}
 extension FfiEdgeRoute: Equatable, Hashable {
     public static func == (lhs: FfiEdgeRoute, rhs: FfiEdgeRoute) -> Bool {
         if lhs.from != rhs.from {
@@ -709,7 +854,19 @@ extension FfiEdgeRoute: Equatable, Hashable {
         if lhs.reversed != rhs.reversed {
             return false
         }
+        if lhs.isSelfLoop != rhs.isSelfLoop {
+            return false
+        }
         if lhs.waypoints != rhs.waypoints {
+            return false
+        }
+        if lhs.segments != rhs.segments {
+            return false
+        }
+        if lhs.arrowhead != rhs.arrowhead {
+            return false
+        }
+        if lhs.labelPosition != rhs.labelPosition {
             return false
         }
         return true
@@ -719,7 +876,11 @@ extension FfiEdgeRoute: Equatable, Hashable {
         hasher.combine(from)
         hasher.combine(to)
         hasher.combine(reversed)
+        hasher.combine(isSelfLoop)
         hasher.combine(waypoints)
+        hasher.combine(segments)
+        hasher.combine(arrowhead)
+        hasher.combine(labelPosition)
     }
 }
 
@@ -733,7 +894,11 @@ public struct FfiConverterTypeFfiEdgeRoute: FfiConverterRustBuffer {
                 from: FfiConverterUInt64.read(from: &buf),
                 to: FfiConverterUInt64.read(from: &buf),
                 reversed: FfiConverterBool.read(from: &buf),
-                waypoints: FfiConverterSequenceTypeFfiPoint.read(from: &buf)
+                isSelfLoop: FfiConverterBool.read(from: &buf),
+                waypoints: FfiConverterSequenceTypeFfiPoint.read(from: &buf),
+                segments: FfiConverterSequenceTypeFfiPathSegment.read(from: &buf),
+                arrowhead: FfiConverterOptionTypeFfiArrowhead.read(from: &buf),
+                labelPosition: FfiConverterOptionTypeFfiPoint.read(from: &buf)
             )
     }
 
@@ -741,7 +906,11 @@ public struct FfiConverterTypeFfiEdgeRoute: FfiConverterRustBuffer {
         FfiConverterUInt64.write(value.from, into: &buf)
         FfiConverterUInt64.write(value.to, into: &buf)
         FfiConverterBool.write(value.reversed, into: &buf)
+        FfiConverterBool.write(value.isSelfLoop, into: &buf)
         FfiConverterSequenceTypeFfiPoint.write(value.waypoints, into: &buf)
+        FfiConverterSequenceTypeFfiPathSegment.write(value.segments, into: &buf)
+        FfiConverterOptionTypeFfiArrowhead.write(value.arrowhead, into: &buf)
+        FfiConverterOptionTypeFfiPoint.write(value.labelPosition, into: &buf)
     }
 }
 
@@ -763,25 +932,26 @@ public struct FfiLayoutResult {
     public var positions: [FfiPosition]
     public var routes: [FfiEdgeRoute]
     /**
-     * Self-loop edges extracted before layout (see module docs). Render
-     * these separately, e.g. as a small loop decoration on the node.
+     * Self-loop edges extracted before layout (see module docs).
      */
     public var selfLoops: [FfiEdge]
+    public var bounds: FfiRect
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
     public init(positions: [FfiPosition], routes: [FfiEdgeRoute],
                 /* 
-                    * Self-loop edges extracted before layout (see module docs). Render
-                    * these separately, e.g. as a small loop decoration on the node.
-                    */ selfLoops: [FfiEdge])
+                    * Self-loop edges extracted before layout (see module docs).
+                    */ selfLoops: [FfiEdge], bounds: FfiRect)
     {
         self.positions = positions
         self.routes = routes
         self.selfLoops = selfLoops
+        self.bounds = bounds
     }
 }
 
+extension FfiLayoutResult: Sendable {}
 extension FfiLayoutResult: Equatable, Hashable {
     public static func == (lhs: FfiLayoutResult, rhs: FfiLayoutResult) -> Bool {
         if lhs.positions != rhs.positions {
@@ -793,6 +963,9 @@ extension FfiLayoutResult: Equatable, Hashable {
         if lhs.selfLoops != rhs.selfLoops {
             return false
         }
+        if lhs.bounds != rhs.bounds {
+            return false
+        }
         return true
     }
 
@@ -800,6 +973,7 @@ extension FfiLayoutResult: Equatable, Hashable {
         hasher.combine(positions)
         hasher.combine(routes)
         hasher.combine(selfLoops)
+        hasher.combine(bounds)
     }
 }
 
@@ -812,7 +986,8 @@ public struct FfiConverterTypeFfiLayoutResult: FfiConverterRustBuffer {
             try FfiLayoutResult(
                 positions: FfiConverterSequenceTypeFfiPosition.read(from: &buf),
                 routes: FfiConverterSequenceTypeFfiEdgeRoute.read(from: &buf),
-                selfLoops: FfiConverterSequenceTypeFfiEdge.read(from: &buf)
+                selfLoops: FfiConverterSequenceTypeFfiEdge.read(from: &buf),
+                bounds: FfiConverterTypeFfiRect.read(from: &buf)
             )
     }
 
@@ -820,6 +995,7 @@ public struct FfiConverterTypeFfiLayoutResult: FfiConverterRustBuffer {
         FfiConverterSequenceTypeFfiPosition.write(value.positions, into: &buf)
         FfiConverterSequenceTypeFfiEdgeRoute.write(value.routes, into: &buf)
         FfiConverterSequenceTypeFfiEdge.write(value.selfLoops, into: &buf)
+        FfiConverterTypeFfiRect.write(value.bounds, into: &buf)
     }
 }
 
@@ -851,6 +1027,7 @@ public struct FfiNode {
     }
 }
 
+extension FfiNode: Sendable {}
 extension FfiNode: Equatable, Hashable {
     public static func == (lhs: FfiNode, rhs: FfiNode) -> Bool {
         if lhs.id != rhs.id {
@@ -918,6 +1095,7 @@ public struct FfiPoint {
     }
 }
 
+extension FfiPoint: Sendable {}
 extension FfiPoint: Equatable, Hashable {
     public static func == (lhs: FfiPoint, rhs: FfiPoint) -> Bool {
         if lhs.x != rhs.x {
@@ -981,6 +1159,7 @@ public struct FfiPosition {
     }
 }
 
+extension FfiPosition: Sendable {}
 extension FfiPosition: Equatable, Hashable {
     public static func == (lhs: FfiPosition, rhs: FfiPosition) -> Bool {
         if lhs.id != rhs.id {
@@ -1036,6 +1215,100 @@ public func FfiConverterTypeFfiPosition_lower(_ value: FfiPosition) -> RustBuffe
     return FfiConverterTypeFfiPosition.lower(value)
 }
 
+public struct FfiRect {
+    public var minX: Float
+    public var minY: Float
+    public var maxX: Float
+    public var maxY: Float
+    public var width: Float
+    public var height: Float
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(minX: Float, minY: Float, maxX: Float, maxY: Float, width: Float, height: Float) {
+        self.minX = minX
+        self.minY = minY
+        self.maxX = maxX
+        self.maxY = maxY
+        self.width = width
+        self.height = height
+    }
+}
+
+extension FfiRect: Sendable {}
+extension FfiRect: Equatable, Hashable {
+    public static func == (lhs: FfiRect, rhs: FfiRect) -> Bool {
+        if lhs.minX != rhs.minX {
+            return false
+        }
+        if lhs.minY != rhs.minY {
+            return false
+        }
+        if lhs.maxX != rhs.maxX {
+            return false
+        }
+        if lhs.maxY != rhs.maxY {
+            return false
+        }
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(minX)
+        hasher.combine(minY)
+        hasher.combine(maxX)
+        hasher.combine(maxY)
+        hasher.combine(width)
+        hasher.combine(height)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRect: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRect {
+        return
+            try FfiRect(
+                minX: FfiConverterFloat.read(from: &buf),
+                minY: FfiConverterFloat.read(from: &buf),
+                maxX: FfiConverterFloat.read(from: &buf),
+                maxY: FfiConverterFloat.read(from: &buf),
+                width: FfiConverterFloat.read(from: &buf),
+                height: FfiConverterFloat.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiRect, into buf: inout [UInt8]) {
+        FfiConverterFloat.write(value.minX, into: &buf)
+        FfiConverterFloat.write(value.minY, into: &buf)
+        FfiConverterFloat.write(value.maxX, into: &buf)
+        FfiConverterFloat.write(value.maxY, into: &buf)
+        FfiConverterFloat.write(value.width, into: &buf)
+        FfiConverterFloat.write(value.height, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRect_lift(_ buf: RustBuffer) throws -> FfiRect {
+    return try FfiConverterTypeFfiRect.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRect_lower(_ value: FfiRect) -> RustBuffer {
+    return FfiConverterTypeFfiRect.lower(value)
+}
+
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
@@ -1086,7 +1359,61 @@ public func FfiConverterTypeFfiAlgorithm_lower(_ value: FfiAlgorithm) -> RustBuf
     return FfiConverterTypeFfiAlgorithm.lower(value)
 }
 
+extension FfiAlgorithm: Sendable {}
 extension FfiAlgorithm: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum FfiDirection {
+    case topToBottom
+    case leftToRight
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiDirection: FfiConverterRustBuffer {
+    typealias SwiftType = FfiDirection
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiDirection {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .topToBottom
+
+        case 2: return .leftToRight
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiDirection, into buf: inout [UInt8]) {
+        switch value {
+        case .topToBottom:
+            writeInt(&buf, Int32(1))
+
+        case .leftToRight:
+            writeInt(&buf, Int32(2))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiDirection_lift(_ buf: RustBuffer) throws -> FfiDirection {
+    return try FfiConverterTypeFfiDirection.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiDirection_lower(_ value: FfiDirection) -> RustBuffer {
+    return FfiConverterTypeFfiDirection.lower(value)
+}
+
+extension FfiDirection: Sendable {}
+extension FfiDirection: Equatable, Hashable {}
 
 public enum FfiLayoutError {
     /**
@@ -1145,6 +1472,65 @@ extension FfiLayoutError: Foundation.LocalizedError {
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
+public enum FfiPathSegment {
+    case line(start: FfiPoint, end: FfiPoint)
+    case cubicCurve(start: FfiPoint, control1: FfiPoint, control2: FfiPoint, end: FfiPoint)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPathSegment: FfiConverterRustBuffer {
+    typealias SwiftType = FfiPathSegment
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPathSegment {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return try .line(start: FfiConverterTypeFfiPoint.read(from: &buf), end: FfiConverterTypeFfiPoint.read(from: &buf))
+
+        case 2: return try .cubicCurve(start: FfiConverterTypeFfiPoint.read(from: &buf), control1: FfiConverterTypeFfiPoint.read(from: &buf), control2: FfiConverterTypeFfiPoint.read(from: &buf), end: FfiConverterTypeFfiPoint.read(from: &buf))
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiPathSegment, into buf: inout [UInt8]) {
+        switch value {
+        case let .line(start, end):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeFfiPoint.write(start, into: &buf)
+            FfiConverterTypeFfiPoint.write(end, into: &buf)
+
+        case let .cubicCurve(start, control1, control2, end):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeFfiPoint.write(start, into: &buf)
+            FfiConverterTypeFfiPoint.write(control1, into: &buf)
+            FfiConverterTypeFfiPoint.write(control2, into: &buf)
+            FfiConverterTypeFfiPoint.write(end, into: &buf)
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPathSegment_lift(_ buf: RustBuffer) throws -> FfiPathSegment {
+    return try FfiConverterTypeFfiPathSegment.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPathSegment_lower(_ value: FfiPathSegment) -> RustBuffer {
+    return FfiConverterTypeFfiPathSegment.lower(value)
+}
+
+extension FfiPathSegment: Sendable {}
+extension FfiPathSegment: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 public enum FfiRoutingStyle {
     case straight
     case orthogonal
@@ -1198,7 +1584,80 @@ public func FfiConverterTypeFfiRoutingStyle_lower(_ value: FfiRoutingStyle) -> R
     return FfiConverterTypeFfiRoutingStyle.lower(value)
 }
 
+extension FfiRoutingStyle: Sendable {}
 extension FfiRoutingStyle: Equatable, Hashable {}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionFloat: FfiConverterRustBuffer {
+    typealias SwiftType = Float?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterFloat.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterFloat.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeFfiArrowhead: FfiConverterRustBuffer {
+    typealias SwiftType = FfiArrowhead?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiArrowhead.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiArrowhead.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeFfiPoint: FfiConverterRustBuffer {
+    typealias SwiftType = FfiPoint?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiPoint.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiPoint.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
@@ -1320,6 +1779,31 @@ private struct FfiConverterSequenceTypeFfiPosition: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeFfiPosition.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeFfiPathSegment: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiPathSegment]
+
+    static func write(_ value: [FfiPathSegment], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiPathSegment.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiPathSegment] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiPathSegment]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeFfiPathSegment.read(from: &buf))
         }
         return seq
     }
