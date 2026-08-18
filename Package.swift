@@ -20,6 +20,16 @@ let package = Package(
             name: "SwiftLayout",
             dependencies: ["LayoutFFI"]
         ),
+        // Pure-Swift tests that don't need the layout engine itself —
+        // NodeIDAllocator's id-stability contract today; a natural home
+        // for GraphPlacement's offset math too, since that's also a pure
+        // function with no FFI dependency. Anything exercising the actual
+        // FFI call belongs in Sample-App instead, against real flatteners
+        // and real graphs.
+        .testTarget(
+            name: "SwiftLayoutTests",
+            dependencies: ["SwiftLayout"]
+        ),
         // The Auto-Injected Binary Target
         .binaryTarget(
             name: "LayoutFFI",
