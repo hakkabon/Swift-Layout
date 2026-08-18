@@ -33,8 +33,8 @@ let package = Package(
         // The Auto-Injected Binary Target
         .binaryTarget(
             name: "LayoutFFI",
-            url: "https://github.com/hakkabon/Layout/releases/download/v0.0.1/Layout.xcframework.zip",
-            checksum: "eb2b8a9039d5982359b994761db70a50507ce04d61d37bbe8a40f941b114e486"
+            url: "https://github.com/hakkabon/Layout/releases/download/v0.0.2/Layout.xcframework.zip",
+            checksum: "59adeb902ab693dad9e62f19feea90cf0a869ba3b5b9da95015597b062edfdd7"
         )
     ]
 )

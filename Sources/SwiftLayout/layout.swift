@@ -508,22 +508,44 @@ private struct FfiConverterString: FfiConverter {
     }
 }
 
+/**
+ * Arrowhead geometry at an edge's target end: a tip point plus two wing
+ * vertices, ready to fill as a triangle.
+ */
 public struct FfiArrowhead {
+    /**
+     * Tip point where the arrow touches the target node boundary.
+     */
     public var tip: FfiPoint
     /**
      * Tangent angle in radians (pointing in the direction of the edge flow).
      */
     public var angle: Float
+    /**
+     * Left wing endpoint.
+     */
     public var left: FfiPoint
+    /**
+     * Right wing endpoint.
+     */
     public var right: FfiPoint
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(tip: FfiPoint,
-                /* 
-                    * Tangent angle in radians (pointing in the direction of the edge flow).
-                    */ angle: Float, left: FfiPoint, right: FfiPoint)
-    {
+    public init(
+        /* 
+         * Tip point where the arrow touches the target node boundary.
+         */ tip: FfiPoint,
+        /* 
+            * Tangent angle in radians (pointing in the direction of the edge flow).
+            */ angle: Float,
+        /* 
+            * Left wing endpoint.
+            */ left: FfiPoint,
+        /* 
+            * Right wing endpoint.
+            */ right: FfiPoint
+    ) {
         self.tip = tip
         self.angle = angle
         self.left = left
@@ -593,9 +615,24 @@ public func FfiConverterTypeFfiArrowhead_lower(_ value: FfiArrowhead) -> RustBuf
     return FfiConverterTypeFfiArrowhead.lower(value)
 }
 
+/**
+ * Tuning knobs for one `layout()` call.
+ */
 public struct FfiConfig {
+    /**
+     * Minimum gap between adjacent siblings' edges (not centers) within a
+     * layer.
+     */
     public var hGap: Float
+    /**
+     * Minimum gap between adjacent ranks' edges (not centers).
+     */
     public var vGap: Float
+    /**
+     * Number of median-relaxation passes; ignored when `algorithm` is
+     * `BrandesKopf`. Higher values straighten edges further at the cost
+     * of more compute.
+     */
     public var relaxPasses: UInt32
     /**
      * Barycenter sweep count for crossing reduction. 4 is a reasonable
@@ -603,19 +640,49 @@ public struct FfiConfig {
      * interactively editing the graph.
      */
     public var sweeps: UInt32
+    /**
+     * Which coordinate-assignment algorithm to use.
+     */
     public var algorithm: FfiAlgorithm
+    /**
+     * How to draw edges between their waypoints.
+     */
     public var routing: FfiRoutingStyle
+    /**
+     * Which way the graph flows.
+     */
     public var direction: FfiDirection
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(hGap: Float, vGap: Float, relaxPasses: UInt32,
-                /* 
-                    * Barycenter sweep count for crossing reduction. 4 is a reasonable
-                    * default; raise it for a "final" layout, lower it while the user is
-                    * interactively editing the graph.
-                    */ sweeps: UInt32, algorithm: FfiAlgorithm, routing: FfiRoutingStyle, direction: FfiDirection)
-    {
+    public init(
+        /* 
+         * Minimum gap between adjacent siblings' edges (not centers) within a
+         * layer.
+         */ hGap: Float,
+        /* 
+            * Minimum gap between adjacent ranks' edges (not centers).
+            */ vGap: Float,
+        /* 
+            * Number of median-relaxation passes; ignored when `algorithm` is
+            * `BrandesKopf`. Higher values straighten edges further at the cost
+            * of more compute.
+            */ relaxPasses: UInt32,
+        /* 
+            * Barycenter sweep count for crossing reduction. 4 is a reasonable
+            * default; raise it for a "final" layout, lower it while the user is
+            * interactively editing the graph.
+            */ sweeps: UInt32,
+        /* 
+            * Which coordinate-assignment algorithm to use.
+            */ algorithm: FfiAlgorithm,
+        /* 
+            * How to draw edges between their waypoints.
+            */ routing: FfiRoutingStyle,
+        /* 
+            * Which way the graph flows.
+            */ direction: FfiDirection
+    ) {
         self.hGap = hGap
         self.vGap = vGap
         self.relaxPasses = relaxPasses
@@ -706,8 +773,17 @@ public func FfiConverterTypeFfiConfig_lower(_ value: FfiConfig) -> RustBuffer {
     return FfiConverterTypeFfiConfig.lower(value)
 }
 
+/**
+ * A single edge, referencing nodes by the caller's own opaque ids.
+ */
 public struct FfiEdge {
+    /**
+     * Source node's caller-assigned id.
+     */
     public var from: UInt64
+    /**
+     * Target node's caller-assigned id.
+     */
     public var to: UInt64
     /**
      * Optional label width for obstacle-free label placement.
@@ -720,14 +796,20 @@ public struct FfiEdge {
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(from: UInt64, to: UInt64,
-                /* 
-                    * Optional label width for obstacle-free label placement.
-                    */ labelWidth: Float?,
-                /* 
-                    * Optional label height for obstacle-free label placement.
-                    */ labelHeight: Float?)
-    {
+    public init(
+        /* 
+         * Source node's caller-assigned id.
+         */ from: UInt64,
+        /* 
+            * Target node's caller-assigned id.
+            */ to: UInt64,
+        /* 
+            * Optional label width for obstacle-free label placement.
+            */ labelWidth: Float?,
+        /* 
+            * Optional label height for obstacle-free label placement.
+            */ labelHeight: Float?
+    ) {
         self.from = from
         self.to = to
         self.labelWidth = labelWidth
@@ -797,16 +879,37 @@ public func FfiConverterTypeFfiEdge_lower(_ value: FfiEdge) -> RustBuffer {
     return FfiConverterTypeFfiEdge.lower(value)
 }
 
+/**
+ * A single edge's final routed path, keyed by the caller's own ids.
+ */
 public struct FfiEdgeRoute {
+    /**
+     * Source node's caller-assigned id, as given in `FfiEdge::from`.
+     */
     public var from: UInt64
+    /**
+     * Target node's caller-assigned id, as given in `FfiEdge::to`.
+     */
     public var to: UInt64
     /**
      * True if this edge was reversed by cycle breaking; draw the
      * arrowhead at the `from` end rather than the `to` end.
      */
     public var reversed: Bool
+    /**
+     * Whether this route represents a self-loop (`from == to`).
+     */
     public var isSelfLoop: Bool
+    /**
+     * Waypoints from source to target — see `EdgeRoute::waypoints` for
+     * how these are packed per `routing` style.
+     */
     public var waypoints: [FfiPoint]
+    /**
+     * The same path as `waypoints`, decomposed into explicit line/curve
+     * segments — use this instead of `waypoints` if you'd rather not
+     * re-derive segment boundaries from the routing style yourself.
+     */
     public var segments: [FfiPathSegment]
     /**
      * Precomputed arrowhead geometry (tip + wing vertices) at the target end.
@@ -819,18 +922,36 @@ public struct FfiEdgeRoute {
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(from: UInt64, to: UInt64,
-                /* 
-                    * True if this edge was reversed by cycle breaking; draw the
-                    * arrowhead at the `from` end rather than the `to` end.
-                    */ reversed: Bool, isSelfLoop: Bool, waypoints: [FfiPoint], segments: [FfiPathSegment],
-                /* 
-                    * Precomputed arrowhead geometry (tip + wing vertices) at the target end.
-                    */ arrowhead: FfiArrowhead?,
-                /* 
-                    * Obstacle-free label center position, if the edge had label dimensions.
-                    */ labelPosition: FfiPoint?)
-    {
+    public init(
+        /* 
+         * Source node's caller-assigned id, as given in `FfiEdge::from`.
+         */ from: UInt64,
+        /* 
+            * Target node's caller-assigned id, as given in `FfiEdge::to`.
+            */ to: UInt64,
+        /* 
+            * True if this edge was reversed by cycle breaking; draw the
+            * arrowhead at the `from` end rather than the `to` end.
+            */ reversed: Bool,
+        /* 
+            * Whether this route represents a self-loop (`from == to`).
+            */ isSelfLoop: Bool,
+        /* 
+            * Waypoints from source to target — see `EdgeRoute::waypoints` for
+            * how these are packed per `routing` style.
+            */ waypoints: [FfiPoint],
+        /* 
+            * The same path as `waypoints`, decomposed into explicit line/curve
+            * segments — use this instead of `waypoints` if you'd rather not
+            * re-derive segment boundaries from the routing style yourself.
+            */ segments: [FfiPathSegment],
+        /* 
+            * Precomputed arrowhead geometry (tip + wing vertices) at the target end.
+            */ arrowhead: FfiArrowhead?,
+        /* 
+            * Obstacle-free label center position, if the edge had label dimensions.
+            */ labelPosition: FfiPoint?
+    ) {
         self.from = from
         self.to = to
         self.reversed = reversed
@@ -928,22 +1049,47 @@ public func FfiConverterTypeFfiEdgeRoute_lower(_ value: FfiEdgeRoute) -> RustBuf
     return FfiConverterTypeFfiEdgeRoute.lower(value)
 }
 
+/**
+ * Everything `layout()` returns for one graph.
+ */
 public struct FfiLayoutResult {
+    /**
+     * Every input node's final position, keyed by the caller's own id.
+     */
     public var positions: [FfiPosition]
+    /**
+     * Every input edge's final routed path (excluding self-loops — see
+     * `self_loops` below).
+     */
     public var routes: [FfiEdgeRoute]
     /**
      * Self-loop edges extracted before layout (see module docs).
      */
     public var selfLoops: [FfiEdge]
+    /**
+     * The graph's overall bounding box, accounting for each node's real
+     * width/height.
+     */
     public var bounds: FfiRect
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(positions: [FfiPosition], routes: [FfiEdgeRoute],
-                /* 
-                    * Self-loop edges extracted before layout (see module docs).
-                    */ selfLoops: [FfiEdge], bounds: FfiRect)
-    {
+    public init(
+        /* 
+         * Every input node's final position, keyed by the caller's own id.
+         */ positions: [FfiPosition],
+        /* 
+            * Every input edge's final routed path (excluding self-loops — see
+            * `self_loops` below).
+            */ routes: [FfiEdgeRoute],
+        /* 
+            * Self-loop edges extracted before layout (see module docs).
+            */ selfLoops: [FfiEdge],
+        /* 
+            * The graph's overall bounding box, accounting for each node's real
+            * width/height.
+            */ bounds: FfiRect
+    ) {
         self.positions = positions
         self.routes = routes
         self.selfLoops = selfLoops
@@ -1013,14 +1159,39 @@ public func FfiConverterTypeFfiLayoutResult_lower(_ value: FfiLayoutResult) -> R
     return FfiConverterTypeFfiLayoutResult.lower(value)
 }
 
+/**
+ * A single node, keyed by the caller's own opaque id (not necessarily
+ * dense or zero-based — see the module docs for why).
+ */
 public struct FfiNode {
+    /**
+     * The caller's own id for this node. Echoed back in `FfiPosition`
+     * and every `FfiEdgeRoute`/`FfiEdge` that touches it.
+     */
     public var id: UInt64
+    /**
+     * Visual width, used by coordinate assignment's separation math.
+     */
     public var width: Float
+    /**
+     * Visual height, used by coordinate assignment's separation math.
+     */
     public var height: Float
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(id: UInt64, width: Float, height: Float) {
+    public init(
+        /* 
+         * The caller's own id for this node. Echoed back in `FfiPosition`
+         * and every `FfiEdgeRoute`/`FfiEdge` that touches it.
+         */ id: UInt64,
+        /* 
+            * Visual width, used by coordinate assignment's separation math.
+            */ width: Float,
+        /* 
+            * Visual height, used by coordinate assignment's separation math.
+            */ height: Float
+    ) {
         self.id = id
         self.width = width
         self.height = height
@@ -1083,13 +1254,30 @@ public func FfiConverterTypeFfiNode_lower(_ value: FfiNode) -> RustBuffer {
     return FfiConverterTypeFfiNode.lower(value)
 }
 
+/**
+ * A 2D point in the layout's own coordinate space (origin-centered — see
+ * the `Swift-Layout` README for how a consumer maps this onto a canvas).
+ */
 public struct FfiPoint {
+    /**
+     * X coordinate.
+     */
     public var x: Float
+    /**
+     * Y coordinate.
+     */
     public var y: Float
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(x: Float, y: Float) {
+    public init(
+        /* 
+         * X coordinate.
+         */ x: Float,
+        /* 
+            * Y coordinate.
+            */ y: Float
+    ) {
         self.x = x
         self.y = y
     }
@@ -1145,14 +1333,36 @@ public func FfiConverterTypeFfiPoint_lower(_ value: FfiPoint) -> RustBuffer {
     return FfiConverterTypeFfiPoint.lower(value)
 }
 
+/**
+ * A node's final assigned position, keyed by the caller's own id.
+ */
 public struct FfiPosition {
+    /**
+     * The caller's own id for this node, as given in `FfiNode::id`.
+     */
     public var id: UInt64
+    /**
+     * Assigned x coordinate.
+     */
     public var x: Float
+    /**
+     * Assigned y coordinate.
+     */
     public var y: Float
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(id: UInt64, x: Float, y: Float) {
+    public init(
+        /* 
+         * The caller's own id for this node, as given in `FfiNode::id`.
+         */ id: UInt64,
+        /* 
+            * Assigned x coordinate.
+            */ x: Float,
+        /* 
+            * Assigned y coordinate.
+            */ y: Float
+    ) {
         self.id = id
         self.x = x
         self.y = y
@@ -1215,17 +1425,58 @@ public func FfiConverterTypeFfiPosition_lower(_ value: FfiPosition) -> RustBuffe
     return FfiConverterTypeFfiPosition.lower(value)
 }
 
+/**
+ * An axis-aligned bounding box, accounting for each node's actual
+ * width/height (not just its center) — see [`FfiLayoutResult::bounds`].
+ */
 public struct FfiRect {
+    /**
+     * Minimum x across every node and route waypoint.
+     */
     public var minX: Float
+    /**
+     * Minimum y across every node and route waypoint.
+     */
     public var minY: Float
+    /**
+     * Maximum x across every node and route waypoint.
+     */
     public var maxX: Float
+    /**
+     * Maximum y across every node and route waypoint.
+     */
     public var maxY: Float
+    /**
+     * `max_x - min_x`.
+     */
     public var width: Float
+    /**
+     * `max_y - min_y`.
+     */
     public var height: Float
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(minX: Float, minY: Float, maxX: Float, maxY: Float, width: Float, height: Float) {
+    public init(
+        /* 
+         * Minimum x across every node and route waypoint.
+         */ minX: Float,
+        /* 
+            * Minimum y across every node and route waypoint.
+            */ minY: Float,
+        /* 
+            * Maximum x across every node and route waypoint.
+            */ maxX: Float,
+        /* 
+            * Maximum y across every node and route waypoint.
+            */ maxY: Float,
+        /* 
+            * `max_x - min_x`.
+            */ width: Float,
+        /* 
+            * `max_y - min_y`.
+            */ height: Float
+    ) {
         self.minX = minX
         self.minY = minY
         self.maxX = maxX
@@ -1311,9 +1562,18 @@ public func FfiConverterTypeFfiRect_lower(_ value: FfiRect) -> RustBuffer {
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Mirrors [`CoordAlgorithm`] across the FFI boundary.
+ */
 
 public enum FfiAlgorithm {
+    /**
+     * Weighted median relaxation with compaction (simpler, O(N·passes)).
+     */
     case medianRelax
+    /**
+     * Brandes-Köpf alignment averaging (better quality, O(N)).
+     */
     case brandesKopf
 }
 
@@ -1364,9 +1624,18 @@ extension FfiAlgorithm: Equatable, Hashable {}
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Mirrors [`LayoutDirection`] across the FFI boundary.
+ */
 
 public enum FfiDirection {
+    /**
+     * Rank 0 at the top, increasing ranks flow downward.
+     */
     case topToBottom
+    /**
+     * Rank 0 at the left, increasing ranks flow rightward.
+     */
     case leftToRight
 }
 
@@ -1415,6 +1684,11 @@ public func FfiConverterTypeFfiDirection_lower(_ value: FfiDirection) -> RustBuf
 extension FfiDirection: Sendable {}
 extension FfiDirection: Equatable, Hashable {}
 
+/**
+ * Everything that can go wrong calling `layout()` — either the input
+ * graph was invalid, or the engine panicked internally (a bug, not bad
+ * input; see the variant docs).
+ */
 public enum FfiLayoutError {
     /**
      * The input graph itself was invalid: a duplicate/unknown node id, or
@@ -1471,10 +1745,41 @@ extension FfiLayoutError: Foundation.LocalizedError {
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * One segment of a routed edge's path, as an explicit drawing primitive
+ * (an alternative to walking `FfiEdgeRoute::waypoints` yourself and
+ * guessing which style connects them).
+ */
 
 public enum FfiPathSegment {
-    case line(start: FfiPoint, end: FfiPoint)
-    case cubicCurve(start: FfiPoint, control1: FfiPoint, control2: FfiPoint, end: FfiPoint)
+    /**
+     * A straight line between two points.
+     */
+    case line(
+        /* 
+         * Segment start point.
+         */ start: FfiPoint,
+        /* 
+            * Segment end point.
+            */ end: FfiPoint
+    )
+    /**
+     * A cubic bezier curve between two points with two control points.
+     */
+    case cubicCurve(
+        /* 
+         * Curve start point.
+         */ start: FfiPoint,
+        /* 
+            * First control point.
+            */ control1: FfiPoint,
+        /* 
+            * Second control point.
+            */ control2: FfiPoint,
+        /* 
+            * Curve end point.
+            */ end: FfiPoint
+    )
 }
 
 #if swift(>=5.8)
@@ -1530,10 +1835,22 @@ extension FfiPathSegment: Equatable, Hashable {}
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Mirrors [`RoutingStyle`] across the FFI boundary.
+ */
 
 public enum FfiRoutingStyle {
+    /**
+     * Straight line, 2 points only — ignores any dummy waypoints.
+     */
     case straight
+    /**
+     * Right-angle polyline through dummy midpoints.
+     */
     case orthogonal
+    /**
+     * Smooth cubic bezier through dummy waypoints.
+     */
     case bezier
 }
 
