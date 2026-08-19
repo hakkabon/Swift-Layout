@@ -34,7 +34,7 @@ let package = Package(
         .binaryTarget(
             name: "LayoutFFI",
             url: "https://github.com/hakkabon/Layout/releases/download/v0.0.2/Layout.xcframework.zip",
-            checksum: "59adeb902ab693dad9e62f19feea90cf0a869ba3b5b9da95015597b062edfdd7"
+            checksum: "ddbaf4730197d9537e22d8eacaa34599c90bac593f3ac7f847c21b78ba10eb8d"
         )
     ]
 )
