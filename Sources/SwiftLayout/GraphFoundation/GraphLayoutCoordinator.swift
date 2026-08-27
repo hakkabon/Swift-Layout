@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import SwiftLayout
 
 /// A domain node (`Source`) plus the position the layout engine assigned
 /// it. This is what the SwiftUI view actually renders — it never sees

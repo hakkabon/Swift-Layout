@@ -8,7 +8,6 @@
 
 import Foundation
 import SwiftUI
-import SwiftLayout
 
 /// Renders whatever the coordinator currently has laid out. Generic over
 /// the domain node type so the same view works for syntax trees, FSA

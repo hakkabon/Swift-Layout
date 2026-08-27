@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import SwiftLayout
 
 /// Something that can turn a domain-specific graph into the flat
 /// `[FfiNode]` / `[FfiEdge]` shape the layout engine's FFI call expects,

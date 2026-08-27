@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import SwiftLayout
 
 ///  General idea: Positions an already-laid-out graph within a canvas
 ///  rectangle.
