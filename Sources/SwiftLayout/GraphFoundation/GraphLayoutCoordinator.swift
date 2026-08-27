@@ -26,6 +26,8 @@ public struct PositionedEdgeRoute: Identifiable {
     public let reversed: Bool
     public let isSelfLoop: Bool
     public let points: [CGPoint]
+    /// Domain-provided label text associated with this route.
+    public let label: String?
     /// Precomputed arrowhead geometry (tip + wing vertices) at the target
     /// end, straight from the layout engine. `GraphVisualizationView`
     /// draws this directly; callers building a custom renderer can use it
@@ -68,6 +70,11 @@ public final class GraphLayoutCoordinator<Node: AnyObject>: ObservableObject {
     /// Re-runs layout for whatever `flattener` currently describes.
     public func relayout<F: GraphFlattening>(_ flattener: F, config: FfiConfig) async where F.Node == Node {
         let (ffiNodes, ffiEdges, lookup) = flattener.flatten()
+        var labelsByEndpoints: [EdgeEndpoints: [String?]] = [:]
+        for edge in ffiEdges {
+            labelsByEndpoints[EdgeEndpoints(from: edge.from, to: edge.to), default: []]
+                .append(flattener.label(for: edge))
+        }
         guard !ffiNodes.isEmpty else {
             nodes = []
             routes = []
@@ -90,12 +97,22 @@ public final class GraphLayoutCoordinator<Node: AnyObject>: ObservableObject {
                 return PositionedNode(id: pos.id, source: source, x: CGFloat(pos.x), y: CGFloat(pos.y))
             }
             routes = result.routes.map { route in
-                PositionedEdgeRoute(
+                // Cycle breaking may reverse an edge internally. The route's
+                // endpoints then describe the laid-out direction, while the
+                // flattener supplied the label in the original direction.
+                let endpoints = route.reversed
+                    ? EdgeEndpoints(from: route.to, to: route.from)
+                    : EdgeEndpoints(from: route.from, to: route.to)
+                let label = labelsByEndpoints[endpoints]?.isEmpty == false
+                    ? labelsByEndpoints[endpoints]!.removeFirst()
+                    : nil
+                return PositionedEdgeRoute(
                     from: route.from,
                     to: route.to,
                     reversed: route.reversed,
                     isSelfLoop: route.isSelfLoop,
                     points: route.waypoints.map { CGPoint(x: CGFloat($0.x), y: CGFloat($0.y)) },
+                    label: label,
                     arrowhead: route.arrowhead,
                     labelPosition: route.labelPosition.map { CGPoint(x: CGFloat($0.x), y: CGFloat($0.y)) }
                 )
@@ -115,6 +132,11 @@ public final class GraphLayoutCoordinator<Node: AnyObject>: ObservableObject {
             // Task cancellation etc.
         }
     }
+}
+
+private struct EdgeEndpoints: Hashable {
+    let from: UInt64
+    let to: UInt64
 }
 
 extension GraphLayoutCoordinator {

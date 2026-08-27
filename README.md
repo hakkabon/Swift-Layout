@@ -76,7 +76,9 @@ across a relayout, instead of tearing down and recreating every node view.
 Set `labelWidth`/`labelHeight` on an `FfiEdge` if that edge has a label you want
 placed obstacle-free — the engine reserves space for it and hands back a
 `labelPosition` on the resulting route (see below). Leave them `nil` for
-unlabeled edges.
+unlabeled edges. Return the corresponding display text from your flattener's
+`label(for:)` method; its default implementation returns `nil`, so existing
+unlabelled conformances need no changes.
 
 See `Sample-App`'s `GraphFlattening/` folder for four real conformances (syntax
 tree, FSA/DFA, SPPF, GSS) — SPPF and GSS in particular show how to flatten a DAG
@@ -127,8 +129,9 @@ A couple of things worth knowing about what comes back:
 
 `GraphVisualizationView` draws exactly what the coordinator currently has: nodes
 as whatever SwiftUI content you provide per node, edges and arrowheads via
-`Canvas`. It takes a flat `offset: CGSize` if you want to place the graph
-yourself.
+`Canvas`, and edge labels at the engine-provided obstacle-free positions. Pass
+`edgeLabelContent` to customize label styling, or use the default material pill.
+It takes a flat `offset: CGSize` if you want to place the graph yourself.
 
 `AnchoredGraphView` is the one you actually want in most cases — it wraps
 `GraphVisualizationView` in a `GeometryReader` and uses `GraphPlacement.offset`

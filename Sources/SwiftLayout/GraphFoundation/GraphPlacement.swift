@@ -98,6 +98,7 @@ public struct AnchoredGraphView<Node: AnyObject>: View {
     var padding: CGFloat = 24
     var nodeMargin: CGFloat = 24
     let nodeContent: (Node) -> AnyView
+    let edgeLabelContent: (String) -> AnyView
 
     public var body: some View {
         // Translate the drawing context inside the Canvas (or pass the placement
@@ -115,7 +116,8 @@ public struct AnchoredGraphView<Node: AnyObject>: View {
             GraphVisualizationView(
                 coordinator: coordinator,
                 offset: offset,
-                nodeContent: nodeContent
+                nodeContent: nodeContent,
+                edgeLabelContent: edgeLabelContent
             )
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
             .animation(.easeInOut(duration: 0.2), value: offset)
@@ -128,12 +130,22 @@ public struct AnchoredGraphView<Node: AnyObject>: View {
         anchor: GraphAnchor = .center,          // Default value included!
         padding: CGFloat = 24,                  // Default value included!
         nodeMargin: CGFloat = 24,               // Default value included!
-        nodeContent: @escaping (Node) -> AnyView
+        nodeContent: @escaping (Node) -> AnyView,
+        edgeLabelContent: @escaping (String) -> AnyView = { label in
+            AnyView(
+                Text(label)
+                    .font(.caption)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
+            )
+        }
     ) {
         self._coordinator = ObservedObject(wrappedValue: coordinator)
         self.anchor = anchor
         self.padding = padding
         self.nodeMargin = nodeMargin
         self.nodeContent = nodeContent
+        self.edgeLabelContent = edgeLabelContent
     }
 }

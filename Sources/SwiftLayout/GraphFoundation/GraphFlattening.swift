@@ -22,4 +22,16 @@ public protocol GraphFlattening {
     /// assigned to each node back to the original domain node — the
     /// reconstruction step needs this to rejoin positions to nodes.
     func flatten() -> (nodes: [FfiNode], edges: [FfiEdge], lookup: [UInt64: Node])
+
+    /// Returns the presentation text associated with an FFI edge, if any.
+    ///
+    /// The Rust engine only needs the label's dimensions for placement. Keeping
+    /// the text here lets the Swift wrapper reattach domain content to the
+    /// positioned route without exposing it across the FFI boundary.
+    func label(for edge: FfiEdge) -> String?
+}
+
+public extension GraphFlattening {
+    /// Unlabelled graphs need no extra implementation.
+    func label(for edge: FfiEdge) -> String? { nil }
 }

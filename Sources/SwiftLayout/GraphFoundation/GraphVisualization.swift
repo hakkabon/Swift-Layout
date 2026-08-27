@@ -23,6 +23,7 @@ public struct GraphVisualizationView<Node: AnyObject>: View {
     @ObservedObject var coordinator: GraphLayoutCoordinator<Node>
     var offset: CGSize = .zero
     let nodeContent: (Node) -> AnyView
+    let edgeLabelContent: (String) -> AnyView
 
     public var body: some View {
         ZStack {
@@ -77,6 +78,16 @@ public struct GraphVisualizationView<Node: AnyObject>: View {
                     .position(x: node.x + offset.width, y: node.y + offset.height)
             }
 
+            ForEach(coordinator.routes) { route in
+                if let label = route.label, let position = route.labelPosition {
+                    edgeLabelContent(label)
+                        .position(
+                            x: position.x + offset.width,
+                            y: position.y + offset.height
+                        )
+                }
+            }
+
             if coordinator.isLayingOut {
                 ProgressView().padding(8).background(.thinMaterial).cornerRadius(8)
             }
@@ -90,11 +101,21 @@ public struct GraphVisualizationView<Node: AnyObject>: View {
     public init(
         coordinator: GraphLayoutCoordinator<Node>,
         offset: CGSize = .zero,
-        nodeContent: @escaping (Node) -> AnyView
+        nodeContent: @escaping (Node) -> AnyView,
+        edgeLabelContent: @escaping (String) -> AnyView = { label in
+            AnyView(
+                Text(label)
+                    .font(.caption)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
+            )
+        }
     ) {
         self._coordinator = ObservedObject(wrappedValue: coordinator)
         self.offset = offset
         self.nodeContent = nodeContent
+        self.edgeLabelContent = edgeLabelContent
     }
 }
 
