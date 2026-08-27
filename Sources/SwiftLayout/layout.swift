@@ -778,6 +778,10 @@ public func FfiConverterTypeFfiConfig_lower(_ value: FfiConfig) -> RustBuffer {
  */
 public struct FfiEdge {
     /**
+     * Stable caller-assigned edge identity, echoed in `FfiEdgeRoute`.
+     */
+    public var id: UInt64
+    /**
      * Source node's caller-assigned id.
      */
     public var from: UInt64
@@ -798,8 +802,11 @@ public struct FfiEdge {
     /// declare one manually.
     public init(
         /* 
-         * Source node's caller-assigned id.
-         */ from: UInt64,
+         * Stable caller-assigned edge identity, echoed in `FfiEdgeRoute`.
+         */ id: UInt64,
+        /* 
+            * Source node's caller-assigned id.
+            */ from: UInt64,
         /* 
             * Target node's caller-assigned id.
             */ to: UInt64,
@@ -810,6 +817,7 @@ public struct FfiEdge {
             * Optional label height for obstacle-free label placement.
             */ labelHeight: Float?
     ) {
+        self.id = id
         self.from = from
         self.to = to
         self.labelWidth = labelWidth
@@ -820,6 +828,9 @@ public struct FfiEdge {
 extension FfiEdge: Sendable {}
 extension FfiEdge: Equatable, Hashable {
     public static func == (lhs: FfiEdge, rhs: FfiEdge) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
         if lhs.from != rhs.from {
             return false
         }
@@ -836,6 +847,7 @@ extension FfiEdge: Equatable, Hashable {
     }
 
     public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
         hasher.combine(from)
         hasher.combine(to)
         hasher.combine(labelWidth)
@@ -850,6 +862,7 @@ public struct FfiConverterTypeFfiEdge: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiEdge {
         return
             try FfiEdge(
+                id: FfiConverterUInt64.read(from: &buf),
                 from: FfiConverterUInt64.read(from: &buf),
                 to: FfiConverterUInt64.read(from: &buf),
                 labelWidth: FfiConverterOptionFloat.read(from: &buf),
@@ -858,6 +871,7 @@ public struct FfiConverterTypeFfiEdge: FfiConverterRustBuffer {
     }
 
     public static func write(_ value: FfiEdge, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.id, into: &buf)
         FfiConverterUInt64.write(value.from, into: &buf)
         FfiConverterUInt64.write(value.to, into: &buf)
         FfiConverterOptionFloat.write(value.labelWidth, into: &buf)
@@ -883,6 +897,10 @@ public func FfiConverterTypeFfiEdge_lower(_ value: FfiEdge) -> RustBuffer {
  * A single edge's final routed path, keyed by the caller's own ids.
  */
 public struct FfiEdgeRoute {
+    /**
+     * Stable caller-assigned identity from `FfiEdge::id`.
+     */
+    public var id: UInt64
     /**
      * Source node's caller-assigned id, as given in `FfiEdge::from`.
      */
@@ -924,8 +942,11 @@ public struct FfiEdgeRoute {
     /// declare one manually.
     public init(
         /* 
-         * Source node's caller-assigned id, as given in `FfiEdge::from`.
-         */ from: UInt64,
+         * Stable caller-assigned identity from `FfiEdge::id`.
+         */ id: UInt64,
+        /* 
+            * Source node's caller-assigned id, as given in `FfiEdge::from`.
+            */ from: UInt64,
         /* 
             * Target node's caller-assigned id, as given in `FfiEdge::to`.
             */ to: UInt64,
@@ -952,6 +973,7 @@ public struct FfiEdgeRoute {
             * Obstacle-free label center position, if the edge had label dimensions.
             */ labelPosition: FfiPoint?
     ) {
+        self.id = id
         self.from = from
         self.to = to
         self.reversed = reversed
@@ -966,6 +988,9 @@ public struct FfiEdgeRoute {
 extension FfiEdgeRoute: Sendable {}
 extension FfiEdgeRoute: Equatable, Hashable {
     public static func == (lhs: FfiEdgeRoute, rhs: FfiEdgeRoute) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
         if lhs.from != rhs.from {
             return false
         }
@@ -994,6 +1019,7 @@ extension FfiEdgeRoute: Equatable, Hashable {
     }
 
     public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
         hasher.combine(from)
         hasher.combine(to)
         hasher.combine(reversed)
@@ -1012,6 +1038,7 @@ public struct FfiConverterTypeFfiEdgeRoute: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiEdgeRoute {
         return
             try FfiEdgeRoute(
+                id: FfiConverterUInt64.read(from: &buf),
                 from: FfiConverterUInt64.read(from: &buf),
                 to: FfiConverterUInt64.read(from: &buf),
                 reversed: FfiConverterBool.read(from: &buf),
@@ -1024,6 +1051,7 @@ public struct FfiConverterTypeFfiEdgeRoute: FfiConverterRustBuffer {
     }
 
     public static func write(_ value: FfiEdgeRoute, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.id, into: &buf)
         FfiConverterUInt64.write(value.from, into: &buf)
         FfiConverterUInt64.write(value.to, into: &buf)
         FfiConverterBool.write(value.reversed, into: &buf)
@@ -1058,17 +1086,17 @@ public struct FfiLayoutResult {
      */
     public var positions: [FfiPosition]
     /**
-     * Every input edge's final routed path (excluding self-loops — see
-     * `self_loops` below).
+     * Every input edge's final routed path, including self-loops.
      */
     public var routes: [FfiEdgeRoute]
     /**
-     * Self-loop edges extracted before layout (see module docs).
+     * Original self-loop records, retained as convenient metadata in
+     * addition to their routed entries in `routes`.
      */
     public var selfLoops: [FfiEdge]
     /**
      * The graph's overall bounding box, accounting for each node's real
-     * width/height.
+     * width/height and every route waypoint.
      */
     public var bounds: FfiRect
 
@@ -1079,15 +1107,15 @@ public struct FfiLayoutResult {
          * Every input node's final position, keyed by the caller's own id.
          */ positions: [FfiPosition],
         /* 
-            * Every input edge's final routed path (excluding self-loops — see
-            * `self_loops` below).
+            * Every input edge's final routed path, including self-loops.
             */ routes: [FfiEdgeRoute],
         /* 
-            * Self-loop edges extracted before layout (see module docs).
+            * Original self-loop records, retained as convenient metadata in
+            * addition to their routed entries in `routes`.
             */ selfLoops: [FfiEdge],
         /* 
             * The graph's overall bounding box, accounting for each node's real
-            * width/height.
+            * width/height and every route waypoint.
             */ bounds: FfiRect
     ) {
         self.positions = positions
@@ -1177,6 +1205,14 @@ public struct FfiNode {
      * Visual height, used by coordinate assignment's separation math.
      */
     public var height: Float
+    /**
+     * Optional requested rank.
+     */
+    public var rankHint: UInt32?
+    /**
+     * Interpretation of `rank_hint` when it is present.
+     */
+    public var rankConstraint: FfiRankConstraint
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
@@ -1190,11 +1226,19 @@ public struct FfiNode {
             */ width: Float,
         /* 
             * Visual height, used by coordinate assignment's separation math.
-            */ height: Float
+            */ height: Float,
+        /* 
+            * Optional requested rank.
+            */ rankHint: UInt32?,
+        /* 
+            * Interpretation of `rank_hint` when it is present.
+            */ rankConstraint: FfiRankConstraint
     ) {
         self.id = id
         self.width = width
         self.height = height
+        self.rankHint = rankHint
+        self.rankConstraint = rankConstraint
     }
 }
 
@@ -1210,6 +1254,12 @@ extension FfiNode: Equatable, Hashable {
         if lhs.height != rhs.height {
             return false
         }
+        if lhs.rankHint != rhs.rankHint {
+            return false
+        }
+        if lhs.rankConstraint != rhs.rankConstraint {
+            return false
+        }
         return true
     }
 
@@ -1217,6 +1267,8 @@ extension FfiNode: Equatable, Hashable {
         hasher.combine(id)
         hasher.combine(width)
         hasher.combine(height)
+        hasher.combine(rankHint)
+        hasher.combine(rankConstraint)
     }
 }
 
@@ -1229,7 +1281,9 @@ public struct FfiConverterTypeFfiNode: FfiConverterRustBuffer {
             try FfiNode(
                 id: FfiConverterUInt64.read(from: &buf),
                 width: FfiConverterFloat.read(from: &buf),
-                height: FfiConverterFloat.read(from: &buf)
+                height: FfiConverterFloat.read(from: &buf),
+                rankHint: FfiConverterOptionUInt32.read(from: &buf),
+                rankConstraint: FfiConverterTypeFfiRankConstraint.read(from: &buf)
             )
     }
 
@@ -1237,6 +1291,8 @@ public struct FfiConverterTypeFfiNode: FfiConverterRustBuffer {
         FfiConverterUInt64.write(value.id, into: &buf)
         FfiConverterFloat.write(value.width, into: &buf)
         FfiConverterFloat.write(value.height, into: &buf)
+        FfiConverterOptionUInt32.write(value.rankHint, into: &buf)
+        FfiConverterTypeFfiRankConstraint.write(value.rankConstraint, into: &buf)
     }
 }
 
@@ -1349,6 +1405,10 @@ public struct FfiPosition {
      * Assigned y coordinate.
      */
     public var y: Float
+    /**
+     * Assigned, uncompressed rank number.
+     */
+    public var rank: UInt32
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
@@ -1361,11 +1421,15 @@ public struct FfiPosition {
             */ x: Float,
         /* 
             * Assigned y coordinate.
-            */ y: Float
+            */ y: Float,
+        /* 
+            * Assigned, uncompressed rank number.
+            */ rank: UInt32
     ) {
         self.id = id
         self.x = x
         self.y = y
+        self.rank = rank
     }
 }
 
@@ -1381,6 +1445,9 @@ extension FfiPosition: Equatable, Hashable {
         if lhs.y != rhs.y {
             return false
         }
+        if lhs.rank != rhs.rank {
+            return false
+        }
         return true
     }
 
@@ -1388,6 +1455,7 @@ extension FfiPosition: Equatable, Hashable {
         hasher.combine(id)
         hasher.combine(x)
         hasher.combine(y)
+        hasher.combine(rank)
     }
 }
 
@@ -1400,7 +1468,8 @@ public struct FfiConverterTypeFfiPosition: FfiConverterRustBuffer {
             try FfiPosition(
                 id: FfiConverterUInt64.read(from: &buf),
                 x: FfiConverterFloat.read(from: &buf),
-                y: FfiConverterFloat.read(from: &buf)
+                y: FfiConverterFloat.read(from: &buf),
+                rank: FfiConverterUInt32.read(from: &buf)
             )
     }
 
@@ -1408,6 +1477,7 @@ public struct FfiConverterTypeFfiPosition: FfiConverterRustBuffer {
         FfiConverterUInt64.write(value.id, into: &buf)
         FfiConverterFloat.write(value.x, into: &buf)
         FfiConverterFloat.write(value.y, into: &buf)
+        FfiConverterUInt32.write(value.rank, into: &buf)
     }
 }
 
@@ -1836,6 +1906,68 @@ extension FfiPathSegment: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /* 
+ * Whether a rank hint is flexible guidance or an exact requirement.
+ */
+
+public enum FfiRankConstraint {
+    /**
+     * Preserve the hinted rank when possible, but move later if required.
+     */
+    case preferred
+    /**
+     * Require the exact hinted rank and reject infeasible graphs.
+     */
+    case pinned
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRankConstraint: FfiConverterRustBuffer {
+    typealias SwiftType = FfiRankConstraint
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRankConstraint {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .preferred
+
+        case 2: return .pinned
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiRankConstraint, into buf: inout [UInt8]) {
+        switch value {
+        case .preferred:
+            writeInt(&buf, Int32(1))
+
+        case .pinned:
+            writeInt(&buf, Int32(2))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRankConstraint_lift(_ buf: RustBuffer) throws -> FfiRankConstraint {
+    return try FfiConverterTypeFfiRankConstraint.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRankConstraint_lower(_ value: FfiRankConstraint) -> RustBuffer {
+    return FfiConverterTypeFfiRankConstraint.lower(value)
+}
+
+extension FfiRankConstraint: Sendable {}
+extension FfiRankConstraint: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
  * Mirrors [`RoutingStyle`] across the FFI boundary.
  */
 
@@ -1907,6 +2039,30 @@ extension FfiRoutingStyle: Equatable, Hashable {}
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterOptionUInt32: FfiConverterRustBuffer {
+    typealias SwiftType = UInt32?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt32.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt32.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterOptionFloat: FfiConverterRustBuffer {
     typealias SwiftType = Float?
 
@@ -1973,6 +2129,31 @@ private struct FfiConverterOptionTypeFfiPoint: FfiConverterRustBuffer {
         case 1: return try FfiConverterTypeFfiPoint.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceUInt64: FfiConverterRustBuffer {
+    typealias SwiftType = [UInt64]
+
+    static func write(_ value: [UInt64], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterUInt64.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UInt64] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UInt64]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterUInt64.read(from: &buf))
+        }
+        return seq
     }
 }
 
@@ -2141,6 +2322,27 @@ public func layout(nodes: [FfiNode], edges: [FfiEdge], config: FfiConfig) throws
     })
 }
 
+/**
+ * Lays out a validated bipartite graph with the first partition pinned to
+ * rank 0 and the second pinned to rank 1. Cycle breaking is deliberately
+ * bypassed; edges are normalized from the first partition to the second.
+ * Set `directed` to preserve directed edge orientation instead.
+ * `max_iterations == 0` selects the default cap of eight full iterations.
+ */
+public func layoutBipartite(nodes: [FfiNode], edges: [FfiEdge], partitionU: [UInt64], partitionV: [UInt64], directed: Bool, maxIterations: UInt32, config: FfiConfig) throws -> FfiLayoutResult {
+    return try FfiConverterTypeFfiLayoutResult.lift(rustCallWithError(FfiConverterTypeFfiLayoutError.lift) {
+        uniffi_layout_fn_func_layout_bipartite(
+            FfiConverterSequenceTypeFfiNode.lower(nodes),
+            FfiConverterSequenceTypeFfiEdge.lower(edges),
+            FfiConverterSequenceUInt64.lower(partitionU),
+            FfiConverterSequenceUInt64.lower(partitionV),
+            FfiConverterBool.lower(directed),
+            FfiConverterUInt32.lower(maxIterations),
+            FfiConverterTypeFfiConfig.lower(config), $0
+        )
+    })
+}
+
 private enum InitializationResult {
     case ok
     case contractVersionMismatch
@@ -2158,6 +2360,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.contractVersionMismatch
     }
     if uniffi_layout_checksum_func_layout() != 43016 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_layout_checksum_func_layout_bipartite() != 55828 {
         return InitializationResult.apiChecksumMismatch
     }
 
