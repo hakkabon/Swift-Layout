@@ -27,13 +27,20 @@ private struct TreeFlattener: GraphFlattening {
         var nodes: [FfiNode] = []
         var edges: [FfiEdge] = []
         var lookup: [UInt64: TreeNode] = [:]
+        var nextEdgeID: UInt64 = 0
 
         func visit(_ node: TreeNode) {
             let id = ids.id(for: node)
-            nodes.append(FfiNode(id: id, width: 40, height: 20))
+            nodes.append(FfiNode(
+                id: id, width: 40, height: 20, rankHint: nil, rankConstraint: .preferred
+            ))
             lookup[id] = node
             for child in node.children {
-                edges.append(FfiEdge(from: id, to: ids.id(for: child), labelWidth: nil, labelHeight: nil))
+                edges.append(FfiEdge(
+                    id: nextEdgeID, from: id, to: ids.id(for: child),
+                    labelWidth: nil, labelHeight: nil
+                ))
+                nextEdgeID += 1
                 visit(child)
             }
         }
@@ -58,15 +65,23 @@ private struct DiamondDAGFlattener: GraphFlattening {
         var edges: [FfiEdge] = []
         var lookup: [UInt64: TreeNode] = [:]
         var visited: Set<ObjectIdentifier> = []
+        var nextEdgeID: UInt64 = 0
 
         func visit(_ node: TreeNode) {
             let id = ids.id(for: node)
             if visited.insert(ObjectIdentifier(node)).inserted {
-                nodes.append(FfiNode(id: id, width: 40, height: 20))
+                nodes.append(FfiNode(
+                    id: id, width: 40, height: 20,
+                    rankHint: nil, rankConstraint: .preferred
+                ))
                 lookup[id] = node
             }
             for child in node.children {
-                edges.append(FfiEdge(from: id, to: ids.id(for: child), labelWidth: nil, labelHeight: nil))
+                edges.append(FfiEdge(
+                    id: nextEdgeID, from: id, to: ids.id(for: child),
+                    labelWidth: nil, labelHeight: nil
+                ))
+                nextEdgeID += 1
                 if !visited.contains(ObjectIdentifier(child)) {
                     visit(child)
                 }

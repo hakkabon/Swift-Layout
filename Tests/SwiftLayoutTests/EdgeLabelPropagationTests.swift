@@ -10,10 +10,10 @@ private struct LabelledEdgeFlattener: GraphFlattening {
     func flatten() -> (nodes: [FfiNode], edges: [FfiEdge], lookup: [UInt64: LabelledNode]) {
         (
             nodes: [
-                FfiNode(id: 0, width: 40, height: 20),
-                FfiNode(id: 1, width: 40, height: 20),
+                FfiNode(id: 0, width: 40, height: 20, rankHint: nil, rankConstraint: .preferred),
+                FfiNode(id: 1, width: 40, height: 20, rankHint: nil, rankConstraint: .preferred),
             ],
-            edges: [FfiEdge(from: 0, to: 1, labelWidth: 36, labelHeight: 14)],
+            edges: [FfiEdge(id: 0, from: 0, to: 1, labelWidth: 36, labelHeight: 14)],
             lookup: [0: source, 1: target]
         )
     }

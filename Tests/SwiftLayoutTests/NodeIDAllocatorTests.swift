@@ -83,14 +83,18 @@ final class NodeIDAllocatorTests: XCTestCase {
         let b = Node()
 
         let forward = NodeIDAllocator()
-        let forwardIDs = [forward.id(for: a), forward.id(for: b)]
+        let forwardA = forward.id(for: a)
+        let forwardB = forward.id(for: b)
 
         let reversed = NodeIDAllocator()
-        let reversedIDs = [reversed.id(for: b), reversed.id(for: a)]
+        _ = reversed.id(for: b)
+        let reversedA = reversed.id(for: a)
 
         XCTAssertNotEqual(
-            forwardIDs, reversedIDs,
+            forwardA, reversedA,
             "visiting the same two objects in a different order assigns different ids"
         )
+        XCTAssertEqual(forwardA, 0)
+        XCTAssertEqual(forwardB, 1)
     }
 }
